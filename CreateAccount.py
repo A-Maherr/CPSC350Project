@@ -17,7 +17,7 @@ def create_account_page():
                 insertion = text(insertion)
                 s = conn.session
                 s.execute (insertion, {"username": new_username})
-                    s.commit()
+                s.commit()
                 st.success(f"Account created for {new_username}!")
                 time.sleep(2)
                 st.session_state.page = "login"
