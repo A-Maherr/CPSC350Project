@@ -4,7 +4,6 @@ from LogIn import login_page
 from CreateAccount import create_account_page
 
 # Set page config
-st.set_page_config(page_title="Welcome", layout="centered")
 
 if "page" not in st.session_state:
     st.session_state.page = "login"
