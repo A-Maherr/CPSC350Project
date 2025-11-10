@@ -3,6 +3,8 @@ import pandas as pd
 import time 
 conn = st.connection('dataset_db', type='sql')
 
+st.set_page_config(layout="wide")
+
 def login_page():
     st.title("Log In")
     username = st.text_input("Username", placeholder="Enter your username")
@@ -15,7 +17,8 @@ def login_page():
                 st.success(f"Welcome back, {username}!")
                 time.sleep(2)
                 st.session_state.username = username
-                st.session_state.page = "main_app"
+                st.session_state.id = conn.query(f"SELECT id from users where username = '{username}';", ttl=0).iloc[0,0]
+                st.session_state.page = "datainput"
                 st.rerun()
             else:
                 st.error("Username not found. Please create an account.")
