@@ -4,7 +4,18 @@ from streamlit_date_picker import date_picker, PickerType
 import time
 from sqlalchemy import text
 
-
+def AI_input_page():
+    st.title()
+    selected_month = date_picker(
+            picker_type=PickerType.month,
+            value=datetime.now(),
+            key="month_picker"
+            ) 
+    if st.button("Next", width="stretch"):
+        st.session_state.selected_month = selected_month
+        st.session_state.page = "datainput_summary"
+        st.rerun()
+    
 def page_month():
     st.title("Data Input - Select Month")
     selected_month = date_picker(
@@ -12,7 +23,10 @@ def page_month():
             value=datetime.now(),
             key="month_picker"
             ) 
-    if st.button("Next "):
+    if st.button("Use AI", icon="🤖", width="content"):
+        st.session_state.page = "AI_data_input"
+        st.rerun()
+    if st.button("Next", width="stretch"):
         st.session_state.selected_month = selected_month
         st.session_state.page = "datainput_income"
         st.rerun()
@@ -28,12 +42,12 @@ def page_income():
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Back"):
+        if st.button("Back", width="stretch"):
             st.session_state.page = "datainput_month"
             st.rerun()
     with col2:
         if canProceed:
-            if st.button("Next"):
+            if st.button("Next", width="stretch"):
                 st.session_state.user_income = income
                 st.session_state.page = "datainput_expenses"
                 st.rerun()
@@ -83,12 +97,12 @@ def page_expenses():
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Back"):
+        if st.button("Back", width="stretch"):
             st.session_state.page = "datainput_income"
             st.rerun()
     with col2:
         if st.session_state.ValidationCounter == 9:
-            if st.button("Next"):
+            if st.button("Next", width="stretch"):
                 st.session_state.Housing = Housing
                 st.session_state.Transportation = transportation
                 st.session_state.Groceries = groceries
