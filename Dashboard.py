@@ -30,7 +30,7 @@ def get_available_months_for_user(user_id):
         SELECT date FROM Income WHERE user_id = {user_id}
         UNION
         SELECT date FROM Expenses WHERE user_id = {user_id}
-    )
+    ) 
     ORDER BY date;
     """
     try:
