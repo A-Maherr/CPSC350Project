@@ -17,8 +17,8 @@ def login_page():
                 st.success(f"Welcome back, {username}!")
                 time.sleep(2)
                 st.session_state.username = username
-                st.session_state.id = conn.query(f"SELECT id from users where username = '{username}';", ttl=0).iloc[0,0]
-                st.session_state.page = "datainput"
+                st.session_state.user_id = conn.query(f"SELECT id from users where username = '{username}';", ttl=0).iloc[0,0]
+                st.session_state.page = "datainput_month"
                 st.rerun()
             else:
                 st.error("Username not found. Please create an account.")
