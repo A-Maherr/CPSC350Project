@@ -1,216 +1,249 @@
-# import streamlit as st
-# import time
-# import pandas as pd
+# Stacked-bar chart, expenses vs income for each month
+# Stacked-bar chart, categories vs expenses per month. So each category is on the X axis and has the total spending for that category in the selected time period,
+# split by how much you spent on that category each month, creating a select box for each category. So not all the categories are on one X-Y axis but the user gets
+# to pick which category to display
+# Pie-chart / Cirlce Chart of some sort for the savings/remainder page nivo.pie https://discuss.streamlit.io/t/streamlit-elements-issue-pie-chart-tooltip-text-color-not-showing-in-dark-mode/53072
 
-# conn = st.connection('dataset_db', type='sql')
-
-# def dashboard_page():
-#     st.title ("Dashboard")
-#     st.write(f"Welcome to your dashboard, {st.session_state.username}!")
-#     st.columns(1) 
-#     if st.button("Input Data", key="input_data_button"):
-#         st.session_state.page = "datainput_month"
-#         st.rerun()
-
-# Dashboard.py
 import streamlit as st
 import pandas as pd
+import altair as alt
 from datetime import datetime
-import matplotlib.pyplot as plt
+from sqlalchemy import text
+from streamlit_elements import elements, nivo 
+from streamlit_date_picker import date_picker, PickerType
 
-# connect to the same DB name you use elsewhere
+# ---------------------------------------------------------
+# CATEGORY MAP
+# ---------------------------------------------------------
+CATEGORY_MAP = {
+    1:"Housing", 
+    2:"Transportation", 
+    3:"Groceries", 
+    4:"Utilities",
+    5:"Clothing", 
+    6:"Healthcare", 
+    7:"PersonalCare", 
+    8:"DebtPayments", 
+    9:"Miscellaneous"
+}
+
 conn = st.connection('dataset_db', type='sql')
 
-def get_available_months_for_user(user_id):
-    """
-    Returns a sorted list of distinct YYYY-MM strings where the user has either income or expense data.
-    """
-    q = f"""
-    SELECT DISTINCT date FROM (
-        SELECT date FROM Income WHERE user_id = {user_id}
-        UNION
-        SELECT date FROM Expenses WHERE user_id = {user_id}
-    ) 
-    ORDER BY date;
-    """
-    try:
-        df = conn.query(q)
-        if df is None or df.empty:
-            return []
-        # data returned as a DF with column 'date'
-        return [row['date'] for row in df.to_dict(orient='records')]
-    except Exception as e:
-        st.error(f"Error reading months from DB: {e}")
-        return []
-
-def get_earliest_month_for_user(user_id):
-    q = f"""
-    SELECT MIN(date) as min_date FROM (
-        SELECT date FROM Income WHERE user_id = {user_id}
-        UNION
-        SELECT date FROM Expenses WHERE user_id = {user_id}
-    );
-    """
-    try:
-        df = conn.query(q)
-        if df is None or df.empty:
-            return None
-        val = df.iloc[0].get('min_date') if 'min_date' in df.columns else df.iloc[0].get('MIN(date)')
-        return val
-    except Exception as e:
-        st.error(f"Error reading earliest month: {e}")
-        return None
-
-def query_income(user_id, start_month, end_month):
-    q = f"""
-    SELECT date, monthly_income
-    FROM Income
-    WHERE user_id = {user_id}
-    AND date BETWEEN '{start_month}' AND '{end_month}'
-    ORDER BY date;
-    """
-    try:
-        df = conn.query(q)
-        if df is None:
-            return pd.DataFrame(columns=['date', 'monthly_income'])
-        return pd.DataFrame(df)
-    except Exception as e:
-        st.error(f"Error querying income: {e}")
-        return pd.DataFrame(columns=['date', 'monthly_income'])
-
-def query_expenses_by_category(user_id, start_month, end_month):
-    q = f"""
-    SELECT et.name AS category, SUM(e.amount) AS total
-    FROM Expenses e
-    JOIN Expense_type et ON e.type_id = et.id
-    WHERE e.user_id = {user_id}
-      AND e.date BETWEEN '{start_month}' AND '{end_month}'
-    GROUP BY et.name
-    ORDER BY total DESC;
-    """
-    try:
-        df = conn.query(q)
-        if df is None:
-            return pd.DataFrame(columns=['category', 'total'])
-        return pd.DataFrame(df)
-    except Exception as e:
-        st.error(f"Error querying expenses: {e}")
-        return pd.DataFrame(columns=['category', 'total'])
-
+# ---------------------------------------------------------
+# DASHBOARD PAGE
+# ---------------------------------------------------------
 def dashboard_page():
-    st.title("Dashboard")
-    username = st.session_state.get("username", "User")
-    st.write(f"Welcome to your dashboard, {username}!")
 
-    # Ensure user_id exists in session
-    if "user_id" not in st.session_state:
-        st.warning("No user logged in. Please log in first.")
-        return
+    st.title("📊 Dashboard Overview")
 
-    user_id = st.session_state.user_id
+    # ---------------------------------------------------------
+    # DATE RANGE PICKERS (return "YYYY-MM")
+    # ---------------------------------------------------------
+    colA, colB = st.columns(2)
 
-    # Determine available months and earliest month in DB for this user
-    months = get_available_months_for_user(user_id)
-    earliest_month = get_earliest_month_for_user(user_id)
+    with colA:
+        start_month = date_picker(
+            picker_type=PickerType.month,
+            value=datetime.now(),
+            key="dash_start_month"
+        )
 
-    if not months:
-        st.info("No data found for your account yet. Click 'Input Data' to add your first month.")
-        if st.button("Input Data"):
-            st.session_state.page = "datainput_month"
-            st.rerun()
-        return
+    with colB:
+        end_month = date_picker(
+            picker_type=PickerType.month,
+            value=datetime.now(),
+            key="dash_end_month"
+        )
 
-    # default end = current month in YYYY-MM
-    current_month = datetime.now().strftime("%Y-%m")
-    if current_month not in months:
-        # ensure present in options (if current month has no data, keep current as default end,
-        # but users should only be able to select actual months; so we clamp default to latest available month)
-        default_end = months[-1]
-    else:
-        default_end = current_month
+    # -------------------------------------------------------------------
+    # Validate that the returned picker value is a string
+    # It will be like "2025-11"
+    # -------------------------------------------------------------------
+    if isinstance(start_month, datetime):
+        start_month = start_month.strftime("%Y-%m")
 
-    # default start = earliest month (per your request)
-    default_start = earliest_month if earliest_month else months[0]
+    if isinstance(end_month, datetime):
+        end_month = end_month.strftime("%Y-%m")
 
-    # Side-by-side month pickers implemented as selectboxes of available months
-    c1, c2, c3 = st.columns([4,4,2])
-    with c1:
-        start_month = st.selectbox("From (month)", months, index=months.index(default_start) if default_start in months else 0, key="dash_start_month")
-    with c2:
-        end_month = st.selectbox("To (month)", months, index=months.index(default_end) if default_end in months else len(months)-1, key="dash_end_month")
-    with c3:
-        apply = st.button("Apply Filter", key="dash_apply_filter")
+    # Guarantee correct string form
+    start_month = str(start_month)
+    end_month = str(end_month)
 
-    # Validate range consistency whenever user presses Apply
-    if apply:
-        # Ensure start is not earlier than earliest_month (should be guaranteed by selectbox but double-check)
-        if earliest_month and start_month < earliest_month:
-            st.error(f"Selected start month ({start_month}) is earlier than earliest data month ({earliest_month}). Please pick a valid start month.")
-        elif start_month > end_month:
-            st.error("Start month must be earlier than or equal to end month.")
-        else:
-            st.session_state.dash_start_month = start_month
-            st.session_state.dash_end_month = end_month
+    # -------------------------------------------------------------------
+    # Query database
+    # -------------------------------------------------------------------
 
-    # If the user hasn't applied filter yet, use defaults stored in session or computed defaults
-    dash_start = st.session_state.get("dash_start_month", default_start)
-    dash_end = st.session_state.get("dash_end_month", default_end)
+    inc_query = f" SELECT date, monthly_income FROM Income WHERE user_id = {st.session_state.user_id} AND date >= '{start_month}'  AND date <= '{end_month}' ORDER BY date; "
 
-    st.markdown(f"**Showing data from:** {dash_start}  →  **to:** {dash_end}")
+    exp_query = f" SELECT date, type_id, amount FROM Expenses WHERE user_id = {st.session_state.user_id} AND date >= '{start_month}' AND date <= '{end_month}' ORDER BY date; "
 
-    # Query data
-    income_df = query_income(user_id, dash_start, dash_end)
-    expenses_df = query_expenses_by_category(user_id, dash_start, dash_end)
+    income_df = conn.query(inc_query, ttl=0)
+    expense_df = conn.query(exp_query, ttl=0)
 
-    # KPIs: only if we have sufficient data
-    total_income = 0.0
-    total_expenses = 0.0
-
-    if not income_df.empty:
-        # Ensure numeric type
-        income_df['monthly_income'] = pd.to_numeric(income_df['monthly_income'], errors='coerce')
-        total_income = income_df['monthly_income'].sum()
-
-    if not expenses_df.empty:
-        expenses_df['total'] = pd.to_numeric(expenses_df['total'], errors='coerce')
-        total_expenses = expenses_df['total'].sum()
-
+    # -------------------------------------------------------------------
+    # KPI CARDS
+    # -------------------------------------------------------------------
+    total_income = float(income_df["monthly_income"].sum()) if not income_df.empty else 0
+    total_expenses = float(expense_df["amount"].sum()) if not expense_df.empty else 0
     remainder = total_income - total_expenses
 
-    # Show KPIs only if at least one of income or expenses exists (per your rule: show only when required data exists)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Income", f"${total_income:,.2f}")
-    col2.metric("Total Expenses", f"${total_expenses:,.2f}")
-    col3.metric("Remainder", f"${remainder:,.2f}")
+    st.markdown("### 📈 Summary Metrics")
 
-    # Charts row
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Income", f"${total_income:,.2f}")
+    c2.metric("Total Expenses", f"${total_expenses:,.2f}")
+    c3.metric("Savings / Remainder", f"${remainder:,.2f}")
+
     st.markdown("---")
-    chart_col1, chart_col2 = st.columns(2)
 
-    # Income line chart (only show if income data exists in the selected range)
+    # -------------------------------------------------------------------
+    # 1️⃣ Income Line Chart
+    # -------------------------------------------------------------------
+    st.subheader("Income Over Time")
+
     if not income_df.empty:
-        # prepare timeseries, set index to date
-        income_ts = income_df.copy()
-        if 'date' in income_ts.columns:
-            income_ts = income_ts[['date', 'monthly_income']].set_index('date')
-            income_ts.index = pd.to_datetime(income_ts.index.astype(str)) 
-        chart_col1.subheader("Income over time")
-        try:
-            chart_col1.line_chart(income_ts['monthly_income'])
-        except Exception as e:
-            chart_col1.error(f"Unable to draw income chart: {e}")
-    else:
-        chart_col1.info("No income data found for the selected range. Income chart will appear once income data exists in range.")
+        income_df["date_dt"] = pd.to_datetime(income_df["date"], format="%Y-%m")
 
+        chart_line = (
+            alt.Chart(income_df)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("date_dt:T", title="Month"),
+                y=alt.Y("monthly_income:Q", title="Income"),
+                tooltip=["date", "monthly_income"]
+            )
+            .properties(height=300)
+        )
+
+        st.altair_chart(chart_line, use_container_width=True)
+    else:
+        st.info("No income data for the selected range.")
 
     st.markdown("---")
-    # Navigation button to go to the input flow
-    btn_col1, btn_col2 = st.columns([1,5])
-    with btn_col2:
-        if st.button("Input Data"):
-            st.session_state.page = "datainput_month"
-            st.rerun()
 
-# If this file is run directly by Streamlit, render the page:
-if __name__ == "__main__":
-    dashboard_page()
+    # -------------------------------------------------------------------
+    # 2️⃣ Stacked bar: Income vs Expenses
+    # -------------------------------------------------------------------
+    st.subheader("Income vs Total Monthly Expenses")
+
+    if not expense_df.empty or not income_df.empty:
+
+        # Aggregate expenses by month
+        exp_month = expense_df.groupby("date")["amount"].sum().reset_index()
+
+        # Merge income and expense
+        merged = pd.merge(
+            income_df.rename(columns={"monthly_income": "income"}),
+            exp_month,
+            on="date",
+            how="outer"
+        ).fillna(0)
+
+        merged["date_dt"] = pd.to_datetime(merged["date"], format="%Y-%m")
+        
+        merged["income"] = pd.to_numeric(merged["income"], errors="coerce").fillna(0)
+        merged["amount"] = pd.to_numeric(merged["amount"], errors="coerce").fillna(0)
+        st.write("DEBUG dtype:", merged.dtypes)
+        
+        bar = (
+            alt.Chart(merged)
+            .transform_fold(
+                ["income", "amount"],
+                as_=["Type", "Value"]
+            )
+            .mark_bar()
+            .encode(
+                x=alt.X("date_dt:T", title="Month"),
+                y=alt.Y("Value:Q", title="Amount", stack="zero"),
+                color=alt.Color("Type:N", title="Category",
+                                scale=alt.Scale(scheme="set2")),
+                tooltip=[
+                    alt.Tooltip("date:N", title="Month"),
+                    alt.Tooltip("Type:N", title="Type"),
+                    alt.Tooltip("Value:Q", title="Amount")
+                ],
+            )
+            .properties(
+                title="Income vs Expenses (Stacked)",
+                height=350
+            )
+    )
+
+
+        st.altair_chart(bar, use_container_width=True)
+    else:
+        st.info("Not enough data to display.")
+
+    st.markdown("---")
+
+    # -------------------------------------------------------------------
+    # 3️⃣ Category-by-month stacked chart (user controllable)
+    # -------------------------------------------------------------------
+    st.subheader("Category Spending by Month")
+
+    category_list = list(CATEGORY_MAP.values())
+    selected_cat = st.selectbox("Select category to view:", category_list)
+
+    selected_type_id = [
+        key for key, val in CATEGORY_MAP.items() if val == selected_cat
+    ][0]
+
+    subset = expense_df[expense_df["type_id"] == selected_type_id]
+
+    if not subset.empty:
+        cat_month = subset.groupby("date")["amount"].sum().reset_index()
+        cat_month["date_dt"] = pd.to_datetime(cat_month["date"], format="%Y-%m")
+
+        bar_cat = (
+            alt.Chart(cat_month)
+            .mark_bar()
+            .encode(
+                x=alt.X("date_dt:T", title="Month"),
+                y=alt.Y("amount:Q", title=f"{selected_cat} Spending"),
+                tooltip=["date", "amount"]
+            )
+            .properties(height=300)
+        )
+
+        st.altair_chart(bar_cat, use_container_width=True)
+    else:
+        st.info(f"No spending data for **{selected_cat}** in this date range.")
+
+    st.markdown("---")
+
+    # -------------------------------------------------------------------
+    # 4️⃣ Savings / Remainder Pie Chart (Nivo)
+    # -------------------------------------------------------------------
+    st.subheader("Savings Distribution (Income vs Expenses vs Remainder)")
+
+    pie_data = [
+        {"id": "Income", "label": "Income", "value": total_income},
+        {"id": "Expenses", "label": "Expenses", "value": total_expenses},
+        {"id": "Savings", "label": "Savings", "value": remainder},
+    ]
+
+    with elements("pie_chart"):
+        nivo.Pie(
+            data=pie_data,
+            margin=dict(top=40, right=80, bottom=80, left=80),
+            innerRadius=0.4,
+            padAngle=0.7,
+            cornerRadius=3,
+            activeOuterRadiusOffset=8,
+            colors={"scheme": "paired"},
+            borderWidth=1,
+            borderColor={"from": "color", "modifiers": [["darker", 0.2]]},
+            arcLabel="value",
+            arcLabelsTextColor="#ffffff",
+            legends=[
+                {
+                    "anchor": "bottom",
+                    "direction": "row",
+                    "translateY": 56,
+                    "itemWidth": 100,
+                    "itemHeight": 18,
+                    "symbolSize": 18,
+                    "symbolShape": "circle",
+                }
+            ]
+        )
