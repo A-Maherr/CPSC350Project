@@ -170,7 +170,7 @@ def dashboard_page():
     )
 
 
-        st.altair_chart(bar, use_container_width=True)
+        st.altair_chart(bar, use_container_width=True) 
     else:
         st.info("Not enough data to display.")
 
@@ -180,7 +180,9 @@ def dashboard_page():
     # 3️⃣ Category-by-month stacked chart (user controllable)
     # -------------------------------------------------------------------
     st.subheader("Category Spending by Month")
-
+    if st.button("input data"):
+        st.session_state.page = "datainput_month"
+        st.rerun()
     category_list = list(CATEGORY_MAP.values())
     selected_cat = st.selectbox("Select category to view:", category_list)
 

@@ -27,10 +27,17 @@ def page_month():
             value=datetime.now(),
             key="month_picker"
             ) 
-    if st.button("Next", width="stretch"):
-        st.session_state.selected_month = selected_month
-        st.session_state.page = "datainput_income"
-        st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Go To Dashboard", width="stretch"):
+            st.session_state.page = "dashboard"
+            st.rerun()
+    with col2:
+        if st.button("Next", width="stretch"):
+            st.session_state.selected_month = selected_month
+            st.session_state.page = "datainput_income"
+            st.rerun()
+        
 
 def page_income():
     canProceed = False
@@ -201,8 +208,10 @@ def page_summary():
 
 def check_input(input):
     try:
-        float(input)
-        return True
+        if (float(input)) >= 0:
+            return True
+        else:
+            st.error("Number Cannot be negative")
     except ValueError:
         st.session_state.ValidationCounter -= 1
         st.error("Please enter a valid number.")
