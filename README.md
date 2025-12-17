@@ -5,13 +5,44 @@ A full-stack personal finance tracking application built with **Streamlit** and 
 
 This project was developed as part of **CPSC-350**.
 
----
-
 ## Overview
 
-The goal of this project was to build an end-to-end data-driven application that balances **backend correctness**, **data integrity**, and **user-friendly interaction**. The system supports structured financial data storage while reducing friction through AI-powered input methods.
+The goal of this project was to build an end-to-end data-driven application that balances **data integrity**, and **user-friendly interaction**. The system supports structured financial data storage while easing the user experience through AI-powered input methods.
 
----
+## Running the Application
+
+### Prerequisites
+- Python 3.10 or newer
+- pip (Python package manager)
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/A-Maherr/CPSC350Project.git
+cd CPSC350Project
+```
+### Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+### Run the Application
+```bash
+streamlit run Main.py
+```
+## API Key Configuration
+
+This application uses AI-powered parsing to convert free-form or spoken expense input into structured data.  
+To enable these features, an **API key is required**.
+
+### Streamlit Secrets
+
+The project uses Streamlit’s built-in secrets management.
+
+Add your API key to the existing file:
+
+```text
+.streamlit/secrets.toml
+```
 
 ## Core Features
 
@@ -80,3 +111,4 @@ Expenses
  └── expense_type_id (FK)
  └── amount
  └── date (YYYY-MM)
+```
