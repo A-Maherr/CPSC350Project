@@ -13,6 +13,17 @@ if st.session_state.page == "login":
 if st.session_state.page == "create_account":
     create_account_page()
 
+if st.session_state.page not in ["login", "create_account"]:
+    top_col1, top_col2, top_col3 = st.columns([6, 1, 1])
+    with top_col3:
+        if st.button("Log out"):
+            # Clear all session variables except 'page'
+            for key in list(st.session_state.keys()):
+                if key != "page":
+                    del st.session_state[key]
+            st.session_state.page = "login"
+            st.rerun()
+
 if st.session_state.page == "datainput_month":
     page_month()
 
