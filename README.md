@@ -43,50 +43,19 @@ Add your API key to the existing file:
 ```text
 .streamlit/secrets.toml
 ```
+## Screenshots
 
-## Core Features
+### Dashboard Overview
+![Dashboard Overview](dashboard_overview.png)
 
-### Income and Expense Management
-- Monthly income logging
-- Categorized expense tracking using a normalized schema
-- Safeguards to prevent duplicate monthly entries
+### Category Monthly Breakdown
+![Monthly Expense Breakdown](category_breakdown.png)
 
-### Interactive Data Visualization
-- Income vs. expense comparisons
-- Monthly and yearly trend analysis
-- Stacked category breakdowns using accessible color palettes
+### AI-Assisted Expenses Input
+![AI Expense Input](AI_input.png)
 
-### AI and Speech-to-Text Integration
-- Converts spoken or free-form text into structured expense records
-- Extracts categories, amounts, and dates automatically
-- Reduces manual data entry and improves usability
-
-### Backend Logic and Data Integrity
-- Normalized SQLite database design
-- SQL aggregation logic for monthly summaries
-- Validation layers to ensure consistent and reliable data
-
----
-
-## Tech Stack
-
-**Frontend / UI**  
-- Streamlit
-
-**Backend**  
-- Python
-
-**Database**  
-- SQLite
-
-**AI**  
-- LLM-based expense parsing using OpenAI's ChatGPT
-
-**Speech-to-Text**  
-- Voice input → text → structured data pipeline (Using OpenAI's Whisper)
-
-**Visualization**  
-- Altair / Streamlit charts
+### Summary Overview
+![Speech-to-Text](summary.png)
 
 ---
 
