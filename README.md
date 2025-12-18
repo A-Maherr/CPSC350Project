@@ -46,16 +46,16 @@ Add your API key to the existing file:
 ## Screenshots
 
 ### Dashboard Overview
-![Dashboard Overview](dashboard_overview.png)
+![Dashboard Overview](Screenshots/dashboard_overview.png)
 
 ### Category Monthly Breakdown
-![Monthly Expense Breakdown](category_breakdown.png)
+![Monthly Expense Breakdown](Screenshots/category_breakdown.png)
 
 ### AI-Assisted Expenses Input
-![AI Expense Input](AI_input.png)
+![AI Expense Input](Screenshots/AI_input.png)
 
 ### Summary Overview
-![Speech-to-Text](summary.png)
+![Speech-to-Text](Screenshots/summary.png)
 
 ---
 
