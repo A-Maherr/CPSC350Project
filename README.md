@@ -1,4 +1,4 @@
-# Personal Finance Dashboard  
+# Personal Finance Application  
 ### Streamlit • SQLite • AI • Speech-to-Text
 
 A full-stack personal finance tracking application built with **Streamlit** and **SQLite**, designed to help users log income and expenses, visualize monthly trends, and interact with their data using **AI-assisted natural language input and speech-to-text**.
